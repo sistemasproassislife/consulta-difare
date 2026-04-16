@@ -319,7 +319,7 @@ const styles = {
     fontFamily: "Arial, sans-serif",
   },
   container: {
-    maxWidth: "1180px",
+    maxWidth: "900px",
     margin: "0 auto",
   },
   logoWrap: {
