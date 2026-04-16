@@ -322,7 +322,7 @@ page: {
   transformOrigin: "top center",      // 🔥 mantiene centrado
 },
   container: {
-    maxWidth: "900px",
+    maxWidth: "1180px",
     margin: "0 auto",
   },
   logoWrap: {
