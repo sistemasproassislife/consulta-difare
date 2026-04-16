@@ -36,23 +36,18 @@ export default function Home() {
     setErrorConexion("");
   };
 
-  const estado = respuesta?.Estado || "";
   const mensajes = Array.isArray(respuesta?.Mensajes) ? respuesta.Mensajes : [];
+  const estado = respuesta?.Estado || "";
+  const hayErrorNegocio =
+    estado === "Error" ||
+    (mensajes.length > 0 && !respuesta?.dato);
 
-  let datos = [];
-  try {
-    const rawDatos = respuesta?.Datos ?? [];
-    datos = typeof rawDatos === "string" ? JSON.parse(rawDatos) : rawDatos;
-  } catch {
-    datos = [];
-  }
+  const datos = Array.isArray(respuesta?.dato) ? respuesta.dato : [];
+  const plan = datos.length > 0 ? datos[0] : {};
+  const titular = plan?.titular || {};
+  const beneficiarios = Array.isArray(plan?.beneficiarios) ? plan.beneficiarios : [];
 
-  const plan = Array.isArray(datos) && datos.length > 0 ? datos[0] : {};
-  const titular = plan?.Titular || {};
-  const beneficiarios = Array.isArray(plan?.Beneficiarios) ? plan.Beneficiarios : [];
-
-  const hayErrorNegocio = estado === "Error";
-  const hayExito = estado === "OK" || plan?.Estado === "ACTIVO";
+  const hayExito = !!plan && Object.keys(plan).length > 0;
 
   return (
     <div style={styles.page}>
@@ -113,49 +108,27 @@ export default function Home() {
 
         {hayErrorNegocio && mensajes?.length > 0 && (
           <div style={styles.errorCard}>
-            {mensajes.map((m, i) => {
-              const tipo = obtenerTipoError(m);
-
-              return (
-                <div key={i} style={styles.errorItem}>
-                  <div style={styles.errorIcon}>
-                    {tipo === "identificacion" && "⚠️"}
-                    {tipo === "carencia" && "⏳"}
-                    {tipo === "preexistencia" && "🧬"}
-                    {tipo === "mora" && "💰"}
-                    {tipo === "no_afiliado" && "❌"}
-                    {tipo === "general" && "⚠️"}
-                  </div>
-
-                  <div>
-                    <div style={styles.errorTitle}>
-                      {tipo === "identificacion" && "Debes ingresar el número de identificación"}
-                      {tipo === "carencia" && "Afiliado en período de carencia"}
-                      {tipo === "preexistencia" && "Preexistencia detectada"}
-                      {tipo === "mora" && "Cliente en mora"}
-                      {tipo === "no_afiliado" && "No se encontró afiliado"}
-                      {tipo === "general" && "Ocurrió un inconveniente"}
-                    </div>
-
-                    <div style={styles.errorText}>{m}</div>
-                  </div>
+            {mensajes.map((m, i) => (
+              <div key={i} style={styles.errorItem}>
+                <div style={styles.errorIcon}>⚠️</div>
+                <div>
+                  <div style={styles.errorTitle}>Ocurrió un inconveniente</div>
+                  <div style={styles.errorText}>{m}</div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
 
-        {!hayErrorNegocio && respuesta && (
+        {!hayErrorNegocio && respuesta && hayExito && (
           <>
             <div style={styles.statusBanner}>
               <div>
                 <div style={styles.statusLabel}>Estado de la consulta</div>
-                <div style={styles.statusValue}>
-                  {hayExito ? "Cobertura encontrada" : respuesta?.Estado || "Consulta realizada"}
-                </div>
+                <div style={styles.statusValue}>Cobertura encontrada</div>
               </div>
-              <div style={hayExito ? styles.statusBadgeOk : styles.statusBadge}>
-                {plan?.Estado || respuesta?.Estado || "-"}
+              <div style={styles.statusBadgeOk}>
+                {plan?.estado || titular?.estado || "-"}
               </div>
             </div>
 
@@ -164,14 +137,19 @@ export default function Home() {
               <div style={styles.card}>
                 <InfoGrid
                   items={[
-                    ["Estado", <span style={styles.estadoOk}>{plan?.Estado || respuesta?.Estado || "-"}</span>],
-                    ["Producto", plan?.Producto || "-"],
-                    ["Plan", plan?.NombrePlan || "-"],
-                    ["Tipo de cobertura", plan?.Vademecum || "-"],
-                    ["Código plan", plan?.CodigoPlan || "-"],
-                    ["Número", plan?.Numero || "-"],
-                    ["Cobertura máxima", plan?.CoberturaMaxima ?? "-"],
-                    ["Versión", plan?.Version ?? "-"],
+                    ["Estado", <span style={styles.estadoOk}>{plan?.estado || titular?.estado || "-"}</span>],
+                    ["Producto", plan?.producto || "-"],
+                    ["Plan", plan?.nombrePlan || "-"],
+                    ["Lista", plan?.nombreLista || "-"],
+                    ["Código plan", plan?.codigoPlan || "-"],
+                    ["Número", plan?.numero || "-"],
+                    ["Versión", plan?.version ?? "-"],
+                    ["Cobertura máxima", plan?.coberturaMaxima ?? "-"],
+                    ["Región", plan?.region || "-"],
+                    ["Tipo", plan?.tipo || "-"],
+                    ["Tipo convenio", plan?.tipoConvenio || "-"],
+                    ["Fecha inicio", formatearFecha(plan?.fechaInicio)],
+                    ["Fecha fin", formatearFecha(plan?.fechaFin)],
                   ]}
                 />
               </div>
@@ -180,15 +158,11 @@ export default function Home() {
               <div style={styles.card}>
                 <InfoGrid
                   items={[
-                    ["Nombre", unirNombre(titular?.Nombres, titular?.Apellidos)],
-                    ["Documento", unirDocumento(titular?.TipoDocumento, titular?.NumeroDocumento)],
-                    ["Edad", titular?.Edad ?? calcularEdad(titular?.FechaNacimiento) ?? "-"],
-                    ["Género", titular?.Genero || "-"],
-                    ["Fecha nacimiento", formatearFecha(titular?.FechaNacimiento)],
-                    ["Deducible total", titular?.DeducibleTotal ?? "-"],
-                    ["Es moroso", valorBooleano(titular?.EsMoroso)],
-                    ["Fecha inicio", formatearFecha(plan?.FechaInicio)],
-                    ["Fecha vigencia", formatearFecha(plan?.FechaVigencia)],
+                    ["Nombre", unirNombre(titular?.nombres, titular?.apellidos)],
+                    ["Documento", unirDocumento(titular?.tipoIdentificacion, titular?.numeroIdentificacion)],
+                    ["Género", titular?.genero || "-"],
+                    ["Código", titular?.codigo ?? "-"],
+                    ["Estado", titular?.estado || "-"],
                   ]}
                 />
               </div>
@@ -199,23 +173,20 @@ export default function Home() {
                   <div style={styles.card} key={index}>
                     <InfoGrid
                       items={[
-                        ["Nombre", unirNombre(benef?.Nombres, benef?.Apellidos)],
-                        ["Documento", unirDocumento(benef?.TipoDocumento, benef?.NumeroDocumento)],
-                        ["Relación", benef?.RelacionDependiente || "-"],
-                        ["Edad", benef?.Edad ?? "-"],
-                        ["Género", benef?.Genero || "-"],
-                        ["Fecha nacimiento", formatearFecha(benef?.FechaNacimiento)],
-                        ["En carencia", valorBooleano(benef?.EnCarencia)],
+                        ["Nombre", unirNombre(benef?.nombres, benef?.apellidos)],
+                        ["Documento", unirDocumento(benef?.tipoDocumento, benef?.numeroDocumeto)],
+                        ["Relación", benef?.relacionDependiente || "-"],
+                        ["Código", benef?.codigo ?? "-"],
                       ]}
                     />
 
-                    {Array.isArray(benef?.BeneficiosPlan) && benef.BeneficiosPlan.length > 0 && (
+                    {Array.isArray(benef?.beneficiosPlan) && benef.beneficiosPlan.length > 0 && (
                       <div style={{ marginTop: 18 }}>
                         <div style={styles.subTitle}>Beneficios del plan</div>
                         <div style={styles.benefitsWrap}>
-                          {benef.BeneficiosPlan.map((b, i) => (
+                          {benef.beneficiosPlan.map((b, i) => (
                             <div key={i} style={styles.benefitChip}>
-                              Valor: {b?.Valor ?? "-"} | Es por plan: {valorBooleano(b?.EsPorPlan)}
+                              {b?.nombre || "-"} | Valor: {b?.valor ?? "-"} | Crédito: {valorBooleano(b?.credito)}
                             </div>
                           ))}
                         </div>
@@ -275,8 +246,8 @@ function unirDocumento(tipo, numero) {
 }
 
 function valorBooleano(valor) {
-  if (valor === true || valor === "true") return "Sí";
-  if (valor === false || valor === "false") return "No";
+  if (valor === true || valor === "true" || valor === "TRUE") return "Sí";
+  if (valor === false || valor === "false" || valor === "FALSE") return "No";
   return valor ?? "-";
 }
 
@@ -286,42 +257,6 @@ function formatearFecha(fecha) {
   const partes = soloFecha.split("-");
   if (partes.length !== 3) return soloFecha;
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
-}
-
-function calcularEdad(fecha) {
-  if (!fecha) return null;
-  const nacimiento = new Date(fecha);
-  if (Number.isNaN(nacimiento.getTime())) return null;
-
-  const hoy = new Date();
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const m = hoy.getMonth() - nacimiento.getMonth();
-
-  if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--;
-  }
-
-  return edad;
-}
-
-function obtenerTipoError(mensaje) {
-  if (!mensaje) return "general";
-
-  const m = mensaje.toUpperCase();
-
-  if (m.includes("CAMPO REQUERIDO")) return "identificacion";
-  if (m.includes("CARENCIA")) return "carencia";
-  if (m.includes("PREEXISTENCIA")) return "preexistencia";
-  if (m.includes("MORA")) return "mora";
-  if (
-    m.includes("SERVICIO AL CLIENTE") ||
-    m.includes("NO EXISTE AFILIADO") ||
-    m.includes("NO SE ENCONTRO AFILIADO")
-  ) {
-    return "no_afiliado";
-  }
-
-  return "general";
 }
 
 const styles = {
@@ -422,13 +357,6 @@ const styles = {
   },
   statusValue: {
     fontSize: "24px",
-    fontWeight: "700",
-  },
-  statusBadge: {
-    background: "#ffffff22",
-    border: "1px solid #ffffff33",
-    borderRadius: "999px",
-    padding: "10px 18px",
     fontWeight: "700",
   },
   statusBadgeOk: {
