@@ -312,12 +312,15 @@ function obtenerTipoError(mensaje) {
 }
 
 const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(180deg, #eef3fb 0%, #f8fbff 100%)",
-    padding: "28px",
-    fontFamily: "Arial, sans-serif",
-  },
+page: {
+  minHeight: "100vh",
+  background: "linear-gradient(180deg, #eef3fb 0%, #f8fbff 100%)",
+  padding: "28px",
+  fontFamily: "Arial, sans-serif",
+
+  transform: "scale(0.85)",           // 🔥 AQUÍ ESTÁ LA MAGIA
+  transformOrigin: "top center",      // 🔥 mantiene centrado
+},
   container: {
     maxWidth: "900px",
     margin: "0 auto",
