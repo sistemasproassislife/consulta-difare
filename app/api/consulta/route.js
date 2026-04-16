@@ -20,7 +20,9 @@ export async function POST(req) {
     if (!tokenResp.ok) {
       return Response.json(
         {
-          error: "No se pudo obtener el token",
+          Estado: "Error",
+          Datos: [],
+          Mensajes: ["No se pudo obtener el token de autenticación"],
           detalle: tokenData,
         },
         { status: 500 }
@@ -29,7 +31,7 @@ export async function POST(req) {
 
     const apiResp = await fetch(
       `${process.env.APEX_API_URL}?numeroIdentificacion=${encodeURIComponent(
-        numeroIdentificacion
+        numeroIdentificacion || ""
       )}`,
       {
         method: "GET",
@@ -40,13 +42,26 @@ export async function POST(req) {
       }
     );
 
-    const data = await apiResp.json();
+    const text = await apiResp.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = {
+        Estado: apiResp.ok ? "OK" : "Error",
+        Datos: [],
+        Mensajes: [text || "La respuesta del servicio no es un JSON válido"],
+      };
+    }
 
     return Response.json(data, { status: apiResp.status });
   } catch (error) {
     return Response.json(
       {
-        error: "Error interno",
+        Estado: "Error",
+        Datos: [],
+        Mensajes: ["Error interno al consultar el servicio"],
         detalle: error.message,
       },
       { status: 500 }
