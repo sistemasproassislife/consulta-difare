@@ -36,21 +36,11 @@ export default function Home() {
     setErrorConexion("");
   };
 
-  const fault = respuesta?.fault || null;
-  const mensajeRequerido = respuesta?.message || "";
-  const esErrorFault = fault?.error === true;
-  const esErrorRequerido = !!mensajeRequerido;
-  const hayErrorNegocio = esErrorFault || esErrorRequerido;
-
-  const mensajes = [];
-
-  if (esErrorFault && fault?.descripcion) {
-    mensajes.push(fault.descripcion);
-  }
-
-  if (esErrorRequerido && respuesta?.message) {
-    mensajes.push(respuesta.message);
-  }
+  const mensajes = Array.isArray(respuesta?.Mensajes) ? respuesta.Mensajes : [];
+  const estado = respuesta?.Estado || "";
+  const hayErrorNegocio =
+    estado === "Error" ||
+    (mensajes.length > 0 && !respuesta?.dato);
 
   const datos = Array.isArray(respuesta?.dato) ? respuesta.dato : [];
   const plan = datos.length > 0 ? datos[0] : {};
@@ -116,37 +106,17 @@ export default function Home() {
           </div>
         )}
 
-        {hayErrorNegocio && mensajes.length > 0 && (
+        {hayErrorNegocio && mensajes?.length > 0 && (
           <div style={styles.errorCard}>
-            {mensajes.map((m, i) => {
-              const tipo = obtenerTipoError(m);
-
-              return (
-                <div key={i} style={styles.errorItem}>
-                  <div style={styles.errorIcon}>
-                    {tipo === "identificacion" && "⚠️"}
-                    {tipo === "carencia" && "⏳"}
-                    {tipo === "preexistencia" && "🧬"}
-                    {tipo === "mora" && "💰"}
-                    {tipo === "no_afiliado" && "❌"}
-                    {tipo === "general" && "⚠️"}
-                  </div>
-
-                  <div>
-                    <div style={styles.errorTitle}>
-                      {tipo === "identificacion" && "Debes ingresar el número de identificación"}
-                      {tipo === "carencia" && "Afiliado en período de carencia"}
-                      {tipo === "preexistencia" && "Preexistencia detectada"}
-                      {tipo === "mora" && "Cliente en mora"}
-                      {tipo === "no_afiliado" && "No se encontró afiliado"}
-                      {tipo === "general" && "Ocurrió un inconveniente"}
-                    </div>
-
-                    <div style={styles.errorText}>{m}</div>
-                  </div>
+            {mensajes.map((m, i) => (
+              <div key={i} style={styles.errorItem}>
+                <div style={styles.errorIcon}>⚠️</div>
+                <div>
+                  <div style={styles.errorTitle}>Ocurrió un inconveniente</div>
+                  <div style={styles.errorText}>{m}</div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
 
@@ -158,7 +128,7 @@ export default function Home() {
                 <div style={styles.statusValue}>Cobertura encontrada</div>
               </div>
               <div style={styles.statusBadgeOk}>
-                {traducirEstado(plan?.estado || titular?.estado || "-")}
+                {plan?.estado || titular?.estado || "-"}
               </div>
             </div>
 
@@ -167,7 +137,7 @@ export default function Home() {
               <div style={styles.card}>
                 <InfoGrid
                   items={[
-                    ["Estado", <span style={styles.estadoOk}>{traducirEstado(plan?.estado || titular?.estado || "-")}</span>],
+                    ["Estado", <span style={styles.estadoOk}>{plan?.estado || titular?.estado || "-"}</span>],
                     ["Producto", plan?.producto || "-"],
                     ["Plan", plan?.nombrePlan || "-"],
                     ["Lista", plan?.nombreLista || "-"],
@@ -190,9 +160,9 @@ export default function Home() {
                   items={[
                     ["Nombre", unirNombre(titular?.nombres, titular?.apellidos)],
                     ["Documento", unirDocumento(titular?.tipoIdentificacion, titular?.numeroIdentificacion)],
-                    ["Género", traducirGenero(titular?.genero)],
+                    ["Género", titular?.genero || "-"],
                     ["Código", titular?.codigo ?? "-"],
-                    ["Estado", traducirEstado(titular?.estado || "-")],
+                    ["Estado", titular?.estado || "-"],
                   ]}
                 />
               </div>
@@ -228,6 +198,19 @@ export default function Home() {
                 <div style={styles.card}>
                   <span>No existen beneficiarios registrados.</span>
                 </div>
+              )}
+
+              {mensajes?.length > 0 && (
+                <>
+                  <SectionTitle>Mensajes</SectionTitle>
+                  <div style={styles.card}>
+                    {mensajes.map((m, i) => (
+                      <div key={i} style={styles.messageItem}>
+                        {m}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </>
@@ -276,52 +259,14 @@ function formatearFecha(fecha) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-function traducirEstado(estado) {
-  if (!estado) return "-";
-  if (estado === "ACT" || estado === "ACTIVO") return "ACTIVO";
-  return estado;
-}
-
-function traducirGenero(genero) {
-  if (!genero) return "-";
-  if (genero === "M") return "Masculino";
-  if (genero === "F") return "Femenino";
-  return genero;
-}
-
-function obtenerTipoError(mensaje) {
-  if (!mensaje) return "general";
-
-  const m = mensaje.toUpperCase();
-
-  if (m.includes("TODOS LOS CAMPOS SON REQUERIDOS")) return "identificacion";
-  if (m.includes("CAMPO REQUERIDO")) return "identificacion";
-  if (m.includes("CARENCIA")) return "carencia";
-  if (m.includes("PREEXISTENCIA")) return "preexistencia";
-  if (m.includes("MORA")) return "mora";
-  if (
-    m.includes("SERVICIO AL CLIENTE") &&
-    !m.includes("MORA") &&
-    !m.includes("PREEXISTENCIA") &&
-    !m.includes("CARENCIA")
-  ) {
-    return "no_afiliado";
-  }
-
-  return "general";
-}
-
 const styles = {
-page: {
-  minHeight: "100vh",
-  width: "100vw",
-  background: "linear-gradient(180deg, #eef3fb 0%, #f8fbff 100%)",
-  padding: "28px",
-  fontFamily: "Arial, sans-serif",
-
-  transform: "scale(0.85)",           // 🔥 AQUÍ ESTÁ LA MAGIA
-  transformOrigin: "top center",      // 🔥 mantiene centrado
-},
+  page: {
+    minHeight: "100vh",
+    background: "linear-gradient(180deg, #eef3fb 0%, #f8fbff 100%)",
+    padding: "28px",
+    fontFamily: "Arial, sans-serif",
+    transform: "scale(0.85)",
+  },
   container: {
     maxWidth: "1180px",
     margin: "0 auto",
@@ -487,6 +432,11 @@ page: {
     borderRadius: "999px",
     padding: "8px 12px",
     fontSize: "14px",
+  },
+  messageItem: {
+    padding: "10px 0",
+    borderBottom: "1px solid #e5e9f2",
+    color: "#344054",
   },
   errorCard: {
     background: "#fff4f4",
