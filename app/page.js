@@ -314,6 +314,7 @@ function obtenerTipoError(mensaje) {
 const styles = {
 page: {
   minHeight: "100vh",
+  width: "100vw",
   background: "linear-gradient(180deg, #eef3fb 0%, #f8fbff 100%)",
   padding: "28px",
   fontFamily: "Arial, sans-serif",
